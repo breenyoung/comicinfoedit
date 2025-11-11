@@ -164,10 +164,19 @@ class ComicInfoModifier:
             files_added = []
             files_excluded = []
 
+            # --- Get the full, absolute path of the output file ---
+            abs_output_path = output_path.resolve()
+
             with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zip_ref:
                 for root, dirs, files in os.walk(source_dir):
                     for file in files:
                         file_path = Path(root) / file
+
+                        # --- Resolve the current file's path ---
+                        #    Check if it's the same as the output file ---
+                        if file_path.resolve() == abs_output_path:
+                            self.log(f"Skipping recursive add of target file: {file}")
+                            continue  # --- Skip this file ---
 
                         # Check if file should be kept
                         if self.should_keep_file(file_path):
