@@ -44,19 +44,25 @@
 - Works with multiple removals: `Writer=null Colorist=null`
 - Update-only flag ignored for removals
 
-### 5. Automatic Backup & Restore
+### 5. Clean Archives
+- Remove non-comic files (SFV, NFO, TXT, etc.)
+- Fixes Kavita server volume parsing issues
+- Keeps only images and ComicInfo.xml
+- Example: `--attribute Series="Batman" --clean-archive`
+
+### 6. Automatic Backup & Restore
 - Backs up each file before modification
 - Restores on any error
 - Auto-cleanup after success
 - Optional `--keep-backups` flag
 
-### 6. Both CBZ and CBR Support
+### 7. Both CBZ and CBR Support
 - CBZ: Standard ZIP format
 - CBR: RAR format (requires unrar/rar commands)
 - Preserves original format
 - Automatic format detection
 
-### 7. Verbose Logging
+### 8. Verbose Logging
 - Use `-v` flag for detailed output
 - Shows each attribute change
 - Useful for debugging
@@ -108,6 +114,23 @@
     Publisher="DC Comics" \
     Year=2024 \
     LanguageISO="en"
+```
+
+### Clean Archives (Fix Kavita Server Issues)
+
+```bash
+# Remove SFV, NFO, and other junk files that cause volume parsing issues
+./comic_info_modifier.py /comics/series --attribute \
+    Publisher="Marvel Comics" \
+    --clean-archive \
+    -v
+```
+
+### Bulk Clean Entire Collection
+
+```bash
+# Clean all comics without modifying metadata
+./comic_info_modifier.py /comics --attribute Format="Digital" --clean-archive
 ```
 
 ### Selective Updates
@@ -233,6 +256,9 @@ Run the included test scripts to see features in action:
 
 # Multiple attributes
 ./demo_multi_attributes.sh
+
+# Clean archives
+./demo_clean_archive.sh
 
 # Comprehensive test
 ./comprehensive_test.sh

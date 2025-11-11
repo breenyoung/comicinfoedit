@@ -17,8 +17,10 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import List, Tuple, Optional
 
+
 class ComicInfoModifier:
-    def __init__(self, attributes: List[Tuple[str, str]], verbose: bool = False, update_only: bool = False):
+    def __init__(self, attributes: List[Tuple[str, str]], verbose: bool = False, update_only: bool = False,
+                 clean_archive: bool = False):
         """
         Initialize the modifier.
 
@@ -26,11 +28,21 @@ class ComicInfoModifier:
             attributes: List of (attribute_name, value) tuples to modify
             verbose: Enable verbose logging
             update_only: Only update existing attributes, don't create new ones
+            clean_archive: Remove non-comic files when repackaging
         """
         self.attributes = attributes
         self.verbose = verbose
         self.update_only = update_only
+        self.clean_archive = clean_archive
         self.backup_dir = None
+
+        # Define allowed file extensions for clean archives
+        self.allowed_extensions = {
+            # Image files
+            '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.tif',
+            # Metadata files
+            '.xml',  # ComicInfo.xml, etc.
+        }
 
     def log(self, message: str, level: str = 'INFO'):
         """Print log messages."""
@@ -93,6 +105,25 @@ class ComicInfoModifier:
         shutil.copy2(backup_path, original_path)
         self.log(f"Restored from backup: {original_path.name}")
 
+    def should_keep_file(self, file_path: Path) -> bool:
+        """
+        Determine if a file should be kept based on clean_archive setting.
+
+        Args:
+            file_path: Path to the file to check
+
+        Returns:
+            True if file should be kept, False if it should be excluded
+        """
+        if not self.clean_archive:
+            return True
+
+        # Get file extension (lowercase)
+        ext = file_path.suffix.lower()
+
+        # Check if extension is in allowed list
+        return ext in self.allowed_extensions
+
     def extract_cbz(self, cbz_path: Path, extract_dir: Path) -> bool:
         """Extract CBZ file."""
         try:
@@ -130,12 +161,25 @@ class ComicInfoModifier:
     def create_cbz(self, source_dir: Path, output_path: Path) -> bool:
         """Create CBZ file from directory."""
         try:
+            files_added = []
+            files_excluded = []
+
             with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zip_ref:
                 for root, dirs, files in os.walk(source_dir):
                     for file in files:
                         file_path = Path(root) / file
-                        arcname = file_path.relative_to(source_dir)
-                        zip_ref.write(file_path, arcname)
+
+                        # Check if file should be kept
+                        if self.should_keep_file(file_path):
+                            arcname = file_path.relative_to(source_dir)
+                            zip_ref.write(file_path, arcname)
+                            files_added.append(file)
+                        else:
+                            files_excluded.append(file)
+                            self.log(f"Excluding non-comic file: {file}")
+
+            if self.clean_archive and files_excluded:
+                self.log(f"Cleaned archive: removed {len(files_excluded)} non-comic file(s)")
 
             self.log(f"Created CBZ: {output_path.name}")
             return True
@@ -146,23 +190,61 @@ class ComicInfoModifier:
     def create_cbr(self, source_dir: Path, output_path: Path) -> bool:
         """Create CBR file from directory using rar."""
         try:
-            # Change to source directory for rar command
             original_cwd = os.getcwd()
-            os.chdir(source_dir)
 
-            # rar a -r -ep1 output.cbr *
-            result = subprocess.run(
-                ['rar', 'a', '-r', '-ep1', str(output_path), '*'],
-                capture_output=True,
-                text=True,
-                check=False
-            )
+            # If clean_archive is enabled, copy only allowed files to temp dir
+            if self.clean_archive:
+                with tempfile.TemporaryDirectory(prefix='cbr_clean_') as clean_dir:
+                    clean_path = Path(clean_dir)
+                    files_excluded = []
 
-            os.chdir(original_cwd)
+                    # Copy only allowed files
+                    for root, dirs, files in os.walk(source_dir):
+                        for file in files:
+                            file_path = Path(root) / file
 
-            if result.returncode != 0:
-                self.log(f"rar error: {result.stderr}", 'ERROR')
-                return False
+                            if self.should_keep_file(file_path):
+                                rel_path = file_path.relative_to(source_dir)
+                                dest_path = clean_path / rel_path
+                                dest_path.parent.mkdir(parents=True, exist_ok=True)
+                                shutil.copy2(file_path, dest_path)
+                            else:
+                                files_excluded.append(file)
+                                self.log(f"Excluding non-comic file: {file}")
+
+                    if files_excluded:
+                        self.log(f"Cleaned archive: removed {len(files_excluded)} non-comic file(s)")
+
+                    # Create RAR from clean directory
+                    os.chdir(clean_path)
+                    result = subprocess.run(
+                        ['rar', 'a', '-r', '-ep1', str(output_path), '*'],
+                        capture_output=True,
+                        text=True,
+                        check=False
+                    )
+
+                    os.chdir(original_cwd)
+
+                    if result.returncode != 0:
+                        self.log(f"rar error: {result.stderr}", 'ERROR')
+                        return False
+            else:
+                # Normal mode - include all files
+                os.chdir(source_dir)
+
+                result = subprocess.run(
+                    ['rar', 'a', '-r', '-ep1', str(output_path), '*'],
+                    capture_output=True,
+                    text=True,
+                    check=False
+                )
+
+                os.chdir(original_cwd)
+
+                if result.returncode != 0:
+                    self.log(f"rar error: {result.stderr}", 'ERROR')
+                    return False
 
             self.log(f"Created CBR: {output_path.name}")
             return True
@@ -335,6 +417,9 @@ Examples:
 
   # Only update Publisher if it already exists (don't create new attribute)
   %(prog)s /comics --attribute Publisher="Marvel" --update-only
+
+  # Clean archives by removing non-comic files (SFV, NFO, etc.)
+  %(prog)s /comics --attribute Series="Batman" --clean-archive -v
         """
     )
 
@@ -361,6 +446,12 @@ Examples:
         '--update-only',
         action='store_true',
         help='Only update existing attributes, do not create new ones (ignored when removing)'
+    )
+
+    parser.add_argument(
+        '--clean-archive',
+        action='store_true',
+        help='Remove non-comic files (SFV, NFO, etc.) when repackaging archives'
     )
 
     parser.add_argument(
@@ -391,7 +482,7 @@ Examples:
         sys.exit(1)
 
     # Initialize modifier
-    modifier = ComicInfoModifier(attributes, args.verbose, args.update_only)
+    modifier = ComicInfoModifier(attributes, args.verbose, args.update_only, args.clean_archive)
 
     try:
         # Get all comic files

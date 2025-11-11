@@ -45,6 +45,7 @@ sudo pacman -S unrar
   - Use `value=null` to remove an attribute
 - `-v, --verbose`: Enable detailed logging
 - `--update-only`: Only update existing attributes, do not create new ones (ignored when removing attributes)
+- `--clean-archive`: Remove non-comic files (SFV, NFO, TXT, etc.) when repackaging archives
 - `--keep-backups`: Keep backup files after processing (default: delete)
 
 ## Examples
@@ -116,6 +117,20 @@ sudo pacman -S unrar
     Publisher="Marvel Comics" \
     LanguageISO="en" \
     -v
+```
+
+### Clean archives by removing non-comic files
+
+```bash
+# Remove SFV, NFO, TXT, and other junk files that cause issues with comic servers
+./comic_info_modifier.py /comics --attribute Series="Batman" --clean-archive -v
+```
+
+### Fix Kavita server volume parsing issues
+
+```bash
+# Clean archives to ensure images are first (fixes Kavita volume detection)
+./comic_info_modifier.py /comics --attribute Publisher="Marvel" --clean-archive
 ```
 
 ## Common ComicInfo.xml Attributes

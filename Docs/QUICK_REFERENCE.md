@@ -26,6 +26,9 @@
 
 # Keep backup files
 ./comic_info_modifier.py comic.cbz --attribute Title="New Title" --keep-backups
+
+# Remove non-comic files (SFV, NFO, etc.) when repackaging
+./comic_info_modifier.py comics/ --attribute Publisher="Marvel" --clean-archive -v
 ```
 
 ## Common Scenarios
@@ -61,6 +64,12 @@
     LanguageISO="en"
 ```
 
+### Clean archives (remove SFV, NFO, etc.)
+```bash
+# Fix Kavita server volume parsing issues
+./comic_info_modifier.py /comics --attribute Publisher="Marvel" --clean-archive -v
+```
+
 ## Flags
 
 | Flag | Purpose | Example |
@@ -68,6 +77,7 @@
 | `-a`, `--attribute` | Specify attribute(s) to modify | `--attribute Series="X-Men"` |
 | `-v`, `--verbose` | Show detailed logging | `-v` |
 | `--update-only` | Only update existing attributes | `--update-only` |
+| `--clean-archive` | Remove non-comic files (SFV, NFO, etc.) | `--clean-archive` |
 | `--keep-backups` | Don't delete backup files | `--keep-backups` |
 
 ## Attribute Format
