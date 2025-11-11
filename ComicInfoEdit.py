@@ -17,7 +17,6 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import List, Tuple, Optional
 
-
 class ComicInfoModifier:
     def __init__(self, attributes: List[Tuple[str, str]], verbose: bool = False, update_only: bool = False):
         """
