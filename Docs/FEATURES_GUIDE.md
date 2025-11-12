@@ -62,7 +62,13 @@
 - Preserves original format
 - Automatic format detection
 
-### 8. Verbose Logging
+### 8. Directory Control
+- Process entire directory trees recursively (default)
+- Or process only specified directory with `--no-recursive`
+- Flexible file and directory selection
+- Mix files and directories as inputs
+
+### 9. Verbose Logging
 - Use `-v` flag for detailed output
 - Shows each attribute change
 - Useful for debugging
@@ -131,6 +137,15 @@
 ```bash
 # Clean all comics without modifying metadata
 ./comic_info_modifier.py /comics --attribute Format="Digital" --clean-archive
+```
+
+### Process Specific Folder Only
+
+```bash
+# Only process comics in current folder, not subdirectories
+./comic_info_modifier.py /comics/marvel/spider-man --attribute \
+    Series="The Amazing Spider-Man" \
+    --no-recursive
 ```
 
 ### Selective Updates
@@ -259,6 +274,9 @@ Run the included test scripts to see features in action:
 
 # Clean archives
 ./demo_clean_archive.sh
+
+# Non-recursive mode
+./demo_no_recursive.sh
 
 # Comprehensive test
 ./comprehensive_test.sh

@@ -20,7 +20,7 @@ from typing import List, Tuple, Optional
 
 class ComicInfoModifier:
     def __init__(self, attributes: List[Tuple[str, str]], verbose: bool = False, update_only: bool = False,
-                 clean_archive: bool = False):
+                 clean_archive: bool = False, recursive: bool = True):
         """
         Initialize the modifier.
 
@@ -29,11 +29,13 @@ class ComicInfoModifier:
             verbose: Enable verbose logging
             update_only: Only update existing attributes, don't create new ones
             clean_archive: Remove non-comic files when repackaging
+            recursive: Process subdirectories recursively
         """
         self.attributes = attributes
         self.verbose = verbose
         self.update_only = update_only
         self.clean_archive = clean_archive
+        self.recursive = recursive
         self.backup_dir = None
 
         # Define allowed file extensions for clean archives
@@ -75,9 +77,12 @@ class ComicInfoModifier:
                 else:
                     self.log(f"Skipping non-comic file: {path}", 'WARNING')
             elif path.is_dir():
-                # Recursively find all CBZ/CBR files
+                # Find CBZ/CBR files (recursively or not based on flag)
                 for ext in ['*.cbz', '*.cbr', '*.CBZ', '*.CBR']:
-                    comic_files.extend(path.rglob(ext))
+                    if self.recursive:
+                        comic_files.extend(path.rglob(ext))
+                    else:
+                        comic_files.extend(path.glob(ext))
 
         return sorted(set(comic_files))
 
@@ -164,7 +169,7 @@ class ComicInfoModifier:
             files_added = []
             files_excluded = []
 
-            # --- Get the full, absolute path of the output file ---
+            # Get the full, absolute path of the output file
             abs_output_path = output_path.resolve()
 
             with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zip_ref:
@@ -172,11 +177,10 @@ class ComicInfoModifier:
                     for file in files:
                         file_path = Path(root) / file
 
-                        # --- Resolve the current file's path ---
-                        #    Check if it's the same as the output file ---
+                        # Resolve the current file's path and check if it's the same as the output file
                         if file_path.resolve() == abs_output_path:
                             self.log(f"Skipping recursive add of target file: {file}")
-                            continue  # --- Skip this file ---
+                            continue  # Skip this file
 
                         # Check if file should be kept
                         if self.should_keep_file(file_path):
@@ -429,6 +433,9 @@ Examples:
 
   # Clean archives by removing non-comic files (SFV, NFO, etc.)
   %(prog)s /comics --attribute Series="Batman" --clean-archive -v
+
+  # Process only files in specified directory (no subdirectories)
+  %(prog)s /comics --attribute LanguageISO="en" --no-recursive
         """
     )
 
@@ -464,6 +471,12 @@ Examples:
     )
 
     parser.add_argument(
+        '--no-recursive',
+        action='store_true',
+        help='Do not process subdirectories recursively (only process files in specified directory)'
+    )
+
+    parser.add_argument(
         '--keep-backups',
         action='store_true',
         help='Keep backup files after processing (default: delete)'
@@ -491,7 +504,7 @@ Examples:
         sys.exit(1)
 
     # Initialize modifier
-    modifier = ComicInfoModifier(attributes, args.verbose, args.update_only, args.clean_archive)
+    modifier = ComicInfoModifier(attributes, args.verbose, args.update_only, args.clean_archive, not args.no_recursive)
 
     try:
         # Get all comic files

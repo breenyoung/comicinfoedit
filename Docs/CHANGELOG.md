@@ -125,6 +125,11 @@ All features work together:
 ## Changelog
 
 ### Version 3.1 (Current)
+- ✨ **NEW:** Non-recursive mode (`--no-recursive`)
+  - Process only specified directory without subdirectories
+  - Useful for selective folder processing
+  - Gives more control over which files to process
+
 - 🐛 **FIXED:** Critical bug in `create_cbz()` where output file could be added to itself
   - Added path comparison to skip the output file during archive creation
   - Prevents infinite recursion and Python crashes

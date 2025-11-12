@@ -46,6 +46,7 @@ sudo pacman -S unrar
 - `-v, --verbose`: Enable detailed logging
 - `--update-only`: Only update existing attributes, do not create new ones (ignored when removing attributes)
 - `--clean-archive`: Remove non-comic files (SFV, NFO, TXT, etc.) when repackaging archives
+- `--no-recursive`: Do not process subdirectories recursively (only process files in specified directory)
 - `--keep-backups`: Keep backup files after processing (default: delete)
 
 ## Examples
@@ -131,6 +132,13 @@ sudo pacman -S unrar
 ```bash
 # Clean archives to ensure images are first (fixes Kavita volume detection)
 ./comic_info_modifier.py /comics --attribute Publisher="Marvel" --clean-archive
+```
+
+### Process only current directory (no subdirectories)
+
+```bash
+# Only process CBZ files in the specified directory, skip subdirectories
+./comic_info_modifier.py /comics/series_name --attribute LanguageISO="en" --no-recursive
 ```
 
 ## Common ComicInfo.xml Attributes

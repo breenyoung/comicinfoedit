@@ -29,6 +29,9 @@
 
 # Remove non-comic files (SFV, NFO, etc.) when repackaging
 ./comic_info_modifier.py comics/ --attribute Publisher="Marvel" --clean-archive -v
+
+# Process only current directory (no subdirectories)
+./comic_info_modifier.py /comics --attribute Series="Batman" --no-recursive
 ```
 
 ## Common Scenarios
@@ -70,6 +73,12 @@
 ./comic_info_modifier.py /comics --attribute Publisher="Marvel" --clean-archive -v
 ```
 
+### Process only one directory level
+```bash
+# Only process files in specified directory, skip subdirectories
+./comic_info_modifier.py /comics/series --attribute Volume=1 --no-recursive
+```
+
 ## Flags
 
 | Flag | Purpose | Example |
@@ -78,6 +87,7 @@
 | `-v`, `--verbose` | Show detailed logging | `-v` |
 | `--update-only` | Only update existing attributes | `--update-only` |
 | `--clean-archive` | Remove non-comic files (SFV, NFO, etc.) | `--clean-archive` |
+| `--no-recursive` | Don't process subdirectories | `--no-recursive` |
 | `--keep-backups` | Don't delete backup files | `--keep-backups` |
 
 ## Attribute Format
