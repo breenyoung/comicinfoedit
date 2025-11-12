@@ -124,7 +124,13 @@ All features work together:
 
 ## Changelog
 
-### Version 3.0 (Current)
+### Version 3.1 (Current)
+- 🐛 **FIXED:** Critical bug in `create_cbz()` where output file could be added to itself
+  - Added path comparison to skip the output file during archive creation
+  - Prevents infinite recursion and Python crashes
+  - Credit: Bug discovered and fixed by Breen during testing
+
+### Version 3.0
 - ✨ **NEW:** Clean archives feature (`--clean-archive`)
   - Removes SFV, NFO, TXT, and other non-comic files
   - Fixes Kavita server volume parsing issues
@@ -238,7 +244,7 @@ Free to use and modify for personal and commercial use.
 
 ---
 
-**Current Version:** 3.0  
+**Current Version:** 3.1  
 **Last Updated:** November 2025  
 **Platform:** Linux (Ubuntu 24)  
 **Language:** Python 3.6+
