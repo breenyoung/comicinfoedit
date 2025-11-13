@@ -125,6 +125,11 @@ All features work together:
 ## Changelog
 
 ### Version 3.1 (Current)
+- ✨ **NEW:** Enhanced verbose summary
+  - Shows count of files that didn't need modification
+  - Helps understand which files were already correct
+  - Only displayed when using `-v` (verbose) flag
+
 - ✨ **NEW:** Non-recursive mode (`--no-recursive`)
   - Process only specified directory without subdirectories
   - Useful for selective folder processing

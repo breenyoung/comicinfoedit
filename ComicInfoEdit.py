@@ -331,12 +331,13 @@ class ComicInfoModifier:
             self.log(f"Error modifying ComicInfo.xml: {e}", 'ERROR')
             return False, False
 
-    def process_file(self, comic_path: Path) -> bool:
+    def process_file(self, comic_path: Path) -> Tuple[bool, bool]:
         """
         Process a single comic file.
 
         Returns:
-            True if successful, False otherwise
+            Tuple of (success, modified) - success indicates if processing completed,
+            modified indicates if changes were made to the file
         """
         self.log(f"\nProcessing: {comic_path}")
 
@@ -353,29 +354,29 @@ class ComicInfoModifier:
             if is_cbz:
                 if not self.extract_cbz(comic_path, temp_path):
                     self.restore_backup(backup_path, comic_path)
-                    return False
+                    return False, False
             else:  # CBR
                 if not self.extract_cbr(comic_path, temp_path):
                     self.restore_backup(backup_path, comic_path)
-                    return False
+                    return False, False
 
             # Find ComicInfo.xml
             comic_info_path = temp_path / 'ComicInfo.xml'
 
             if not comic_info_path.exists():
                 self.log(f"ComicInfo.xml not found in {comic_path.name}", 'ERROR')
-                return False
+                return False, False
 
             # Modify ComicInfo.xml
             success, modified = self.modify_comic_info(comic_info_path)
 
             if not success:
                 self.restore_backup(backup_path, comic_path)
-                return False
+                return False, False
 
             if not modified:
                 self.log(f"No changes needed for {comic_path.name}")
-                return True
+                return True, False
 
             # Create temporary output file
             temp_output = Path(temp_dir) / f"temp_{comic_path.name}"
@@ -384,21 +385,21 @@ class ComicInfoModifier:
             if is_cbz:
                 if not self.create_cbz(temp_path, temp_output):
                     self.restore_backup(backup_path, comic_path)
-                    return False
+                    return False, False
             else:  # CBR
                 if not self.create_cbr(temp_path, temp_output):
                     self.restore_backup(backup_path, comic_path)
-                    return False
+                    return False, False
 
             # Replace original file
             try:
                 shutil.copy2(temp_output, comic_path)
                 self.log(f"Successfully updated: {comic_path.name}")
-                return True
+                return True, True
             except Exception as e:
                 self.log(f"Failed to replace original file: {e}", 'ERROR')
                 self.restore_backup(backup_path, comic_path)
-                return False
+                return False, False
 
     def cleanup(self):
         """Clean up backup directory."""
@@ -517,19 +518,26 @@ Examples:
         modifier.log(f"Found {len(comic_files)} comic file(s) to process")
 
         # Process each file
-        success_count = 0
+        modified_count = 0
+        unchanged_count = 0
         fail_count = 0
 
         for comic_file in comic_files:
-            if modifier.process_file(comic_file):
-                success_count += 1
+            success, modified = modifier.process_file(comic_file)
+            if success:
+                if modified:
+                    modified_count += 1
+                else:
+                    unchanged_count += 1
             else:
                 fail_count += 1
 
         # Summary
         print(f"\n{'=' * 60}")
         print(f"Processing complete:")
-        print(f"  Successfully processed: {success_count}")
+        print(f"  Successfully modified: {modified_count}")
+        if args.verbose and unchanged_count > 0:
+            print(f"  No changes needed: {unchanged_count}")
         print(f"  Failed: {fail_count}")
         print(f"  Total: {len(comic_files)}")
         print(f"{'=' * 60}")

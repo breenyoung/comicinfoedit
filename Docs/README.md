@@ -141,6 +141,19 @@ sudo pacman -S unrar
 ./comic_info_modifier.py /comics/series_name --attribute LanguageISO="en" --no-recursive
 ```
 
+### See which files didn't need changes (verbose summary)
+
+```bash
+# Verbose mode now shows count of files that didn't need modification
+./comic_info_modifier.py /comics --attribute Publisher="Marvel" -v
+
+# Output:
+#   Successfully modified: 10
+#   No changes needed: 5    ← Only shown in verbose mode
+#   Failed: 0
+#   Total: 15
+```
+
 ## Common ComicInfo.xml Attributes
 
 Here are some commonly used attributes in ComicInfo.xml:
