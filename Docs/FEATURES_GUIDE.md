@@ -53,8 +53,9 @@
 ### 6. Automatic Backup & Restore
 - Backs up each file before modification
 - Restores on any error
-- Auto-cleanup after success
+- **Deletes backups immediately after processing** (efficient disk usage)
 - Optional `--keep-backups` flag
+- Can process unlimited collection size (only needs space for one file)
 
 ### 7. Both CBZ and CBR Support
 - CBZ: Standard ZIP format

@@ -110,6 +110,15 @@ class ComicInfoModifier:
         shutil.copy2(backup_path, original_path)
         self.log(f"Restored from backup: {original_path.name}")
 
+    def delete_backup(self, backup_path: Path):
+        """Delete a backup file after successful processing."""
+        try:
+            if backup_path.exists():
+                backup_path.unlink()
+                self.log(f"Deleted backup: {backup_path.name}")
+        except Exception as e:
+            self.log(f"Warning: Could not delete backup {backup_path.name}: {e}", 'WARNING')
+
     def should_keep_file(self, file_path: Path) -> bool:
         """
         Determine if a file should be kept based on clean_archive setting.
@@ -344,62 +353,68 @@ class ComicInfoModifier:
         # Create backup
         backup_path = self.create_backup(comic_path)
 
-        # Create temporary directory for extraction
-        with tempfile.TemporaryDirectory(prefix='comic_extract_') as temp_dir:
-            temp_path = Path(temp_dir)
+        try:
+            # Create temporary directory for extraction
+            with tempfile.TemporaryDirectory(prefix='comic_extract_') as temp_dir:
+                temp_path = Path(temp_dir)
 
-            # Extract based on file type
-            is_cbz = comic_path.suffix.lower() == '.cbz'
+                # Extract based on file type
+                is_cbz = comic_path.suffix.lower() == '.cbz'
 
-            if is_cbz:
-                if not self.extract_cbz(comic_path, temp_path):
-                    self.restore_backup(backup_path, comic_path)
+                if is_cbz:
+                    if not self.extract_cbz(comic_path, temp_path):
+                        self.restore_backup(backup_path, comic_path)
+                        return False, False
+                else:  # CBR
+                    if not self.extract_cbr(comic_path, temp_path):
+                        self.restore_backup(backup_path, comic_path)
+                        return False, False
+
+                # Find ComicInfo.xml
+                comic_info_path = temp_path / 'ComicInfo.xml'
+
+                if not comic_info_path.exists():
+                    self.log(f"ComicInfo.xml not found in {comic_path.name}", 'ERROR')
                     return False, False
-            else:  # CBR
-                if not self.extract_cbr(comic_path, temp_path):
-                    self.restore_backup(backup_path, comic_path)
-                    return False, False
 
-            # Find ComicInfo.xml
-            comic_info_path = temp_path / 'ComicInfo.xml'
+                # Modify ComicInfo.xml
+                success, modified = self.modify_comic_info(comic_info_path)
 
-            if not comic_info_path.exists():
-                self.log(f"ComicInfo.xml not found in {comic_path.name}", 'ERROR')
-                return False, False
-
-            # Modify ComicInfo.xml
-            success, modified = self.modify_comic_info(comic_info_path)
-
-            if not success:
-                self.restore_backup(backup_path, comic_path)
-                return False, False
-
-            if not modified:
-                self.log(f"No changes needed for {comic_path.name}")
-                return True, False
-
-            # Create temporary output file
-            temp_output = Path(temp_dir) / f"temp_{comic_path.name}"
-
-            # Recreate archive
-            if is_cbz:
-                if not self.create_cbz(temp_path, temp_output):
-                    self.restore_backup(backup_path, comic_path)
-                    return False, False
-            else:  # CBR
-                if not self.create_cbr(temp_path, temp_output):
+                if not success:
                     self.restore_backup(backup_path, comic_path)
                     return False, False
 
-            # Replace original file
-            try:
-                shutil.copy2(temp_output, comic_path)
-                self.log(f"Successfully updated: {comic_path.name}")
-                return True, True
-            except Exception as e:
-                self.log(f"Failed to replace original file: {e}", 'ERROR')
-                self.restore_backup(backup_path, comic_path)
-                return False, False
+                if not modified:
+                    self.log(f"No changes needed for {comic_path.name}")
+                    return True, False
+
+                # Create temporary output file
+                temp_output = Path(temp_dir) / f"temp_{comic_path.name}"
+
+                # Recreate archive
+                if is_cbz:
+                    if not self.create_cbz(temp_path, temp_output):
+                        self.restore_backup(backup_path, comic_path)
+                        return False, False
+                else:  # CBR
+                    if not self.create_cbr(temp_path, temp_output):
+                        self.restore_backup(backup_path, comic_path)
+                        return False, False
+
+                # Replace original file
+                try:
+                    shutil.copy2(temp_output, comic_path)
+                    self.log(f"Successfully updated: {comic_path.name}")
+                    return True, True
+                except Exception as e:
+                    self.log(f"Failed to replace original file: {e}", 'ERROR')
+                    self.restore_backup(backup_path, comic_path)
+                    return False, False
+        finally:
+            # Always delete the backup after processing (success or failure)
+            # If we failed and restored, we already restored so don't need backup
+            # If we succeeded, we don't need the backup anymore
+            self.delete_backup(backup_path)
 
     def cleanup(self):
         """Clean up backup directory."""

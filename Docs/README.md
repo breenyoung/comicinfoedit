@@ -183,9 +183,11 @@ For a complete list, refer to the [ComicInfo.xml specification](https://anansi-p
 3. **Modify**: Finds and modifies `ComicInfo.xml`
 4. **Repackage**: Recreates the archive with the same format
 5. **Replace**: Overwrites the original file
-6. **Cleanup**: Removes temporary files and backups (unless `--keep-backups` is used)
+6. **Cleanup**: Removes temporary files and deletes the backup immediately
 
 If any step fails, the original file is restored from backup.
+
+**Note:** Backups are deleted immediately after processing each file, so you only need disk space for one comic at a time (not the entire collection).
 
 ## Error Handling
 

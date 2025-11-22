@@ -125,6 +125,12 @@ All features work together:
 ## Changelog
 
 ### Version 3.1 (Current)
+- 🐛 **FIXED:** Critical disk space issue when processing large collections
+  - Backups are now deleted immediately after processing each file
+  - Previously kept all backups until end, exhausting /tmp partition
+  - Can now process unlimited collection size (only need space for one file)
+  - Credit: Issue reported by Breen during production use
+
 - ✨ **NEW:** Enhanced verbose summary
   - Shows count of files that didn't need modification
   - Helps understand which files were already correct
