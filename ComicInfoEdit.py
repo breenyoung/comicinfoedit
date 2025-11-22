@@ -13,6 +13,7 @@ import tempfile
 import shutil
 import zipfile
 import subprocess
+import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import List, Tuple, Optional
@@ -532,6 +533,9 @@ Examples:
 
         modifier.log(f"Found {len(comic_files)} comic file(s) to process")
 
+        # Start timing
+        start_time = time.time()
+
         # Process each file
         modified_count = 0
         unchanged_count = 0
@@ -547,6 +551,9 @@ Examples:
             else:
                 fail_count += 1
 
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+
         # Summary
         print(f"\n{'=' * 60}")
         print(f"Processing complete:")
@@ -555,6 +562,7 @@ Examples:
             print(f"  No changes needed: {unchanged_count}")
         print(f"  Failed: {fail_count}")
         print(f"  Total: {len(comic_files)}")
+        print(f"  Elapsed time: {elapsed_time:.2f} seconds")
         print(f"{'=' * 60}")
 
         # Cleanup
