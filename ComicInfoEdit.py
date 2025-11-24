@@ -20,19 +20,19 @@ from typing import List, Tuple, Optional
 
 
 class ComicInfoModifier:
-    def __init__(self, attributes: List[Tuple[str, str]], verbose: bool = False, update_only: bool = False,
+    def __init__(self, attributes: List[Tuple[str, str]] = None, verbose: bool = False, update_only: bool = False,
                  clean_archive: bool = False, recursive: bool = True):
         """
         Initialize the modifier.
 
         Args:
-            attributes: List of (attribute_name, value) tuples to modify
+            attributes: List of (attribute_name, value) tuples to modify (optional for view mode)
             verbose: Enable verbose logging
             update_only: Only update existing attributes, don't create new ones
             clean_archive: Remove non-comic files when repackaging
             recursive: Process subdirectories recursively
         """
-        self.attributes = attributes
+        self.attributes = attributes or []
         self.verbose = verbose
         self.update_only = update_only
         self.clean_archive = clean_archive
@@ -423,6 +423,80 @@ class ComicInfoModifier:
             shutil.rmtree(self.backup_dir)
             self.log(f"Cleaned up backup directory: {self.backup_dir}")
 
+    def view_metadata(self, comic_path: Path) -> bool:
+        """
+        View metadata from a comic file without modification.
+
+        Args:
+            comic_path: Path to the comic file
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not comic_path.exists():
+            print(f"Error: File does not exist: {comic_path}", file=sys.stderr)
+            return False
+
+        if comic_path.suffix.lower() not in ['.cbz', '.cbr']:
+            print(f"Error: Not a comic file: {comic_path}", file=sys.stderr)
+            return False
+
+        is_cbz = comic_path.suffix.lower() == '.cbz'
+
+        with tempfile.TemporaryDirectory(prefix='comic_view_') as temp_dir:
+            temp_path = Path(temp_dir) / 'extracted'
+            temp_path.mkdir()
+
+            # Extract archive
+            if is_cbz:
+                if not self.extract_cbz(comic_path, temp_path):
+                    return False
+            else:  # CBR
+                if not self.extract_cbr(comic_path, temp_path):
+                    return False
+
+            # Find ComicInfo.xml
+            comic_info_path = temp_path / 'ComicInfo.xml'
+
+            if not comic_info_path.exists():
+                print(f"\nArchive: {comic_path.name}")
+                print("ComicInfo.xml not found ✗")
+                return False
+
+            # Parse and display XML
+            try:
+                tree = ET.parse(comic_info_path)
+                root = tree.getroot()
+
+                print(f"\nArchive: {comic_path.name}")
+                print("ComicInfo.xml found ✓\n")
+                print("Metadata:")
+
+                # Get all child elements and display non-empty ones
+                found_metadata = False
+                for child in root:
+                    if child.text and child.text.strip():
+                        found_metadata = True
+                        # Format the output nicely
+                        value = child.text.strip()
+                        # Truncate long values for readability
+                        if len(value) > 80:
+                            value = value[:77] + "..."
+                        print(f"  {child.tag}: {value}")
+
+                if not found_metadata:
+                    print("  (no metadata found)")
+
+                print()  # Empty line at the end
+                return True
+
+            except ET.ParseError as e:
+                print(f"Error: Failed to parse ComicInfo.xml: {e}", file=sys.stderr)
+                return False
+            except Exception as e:
+                print(f"Error: {e}", file=sys.stderr)
+                return False
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -453,6 +527,9 @@ Examples:
 
   # Process only files in specified directory (no subdirectories)
   %(prog)s /comics --attribute LanguageISO="en" --no-recursive
+
+  # View metadata from a single file
+  %(prog)s comic.cbz --view
         """
     )
 
@@ -464,7 +541,7 @@ Examples:
 
     parser.add_argument(
         '-a', '--attribute',
-        required=True,
+        required=False,
         nargs='+',
         help='XML attribute(s) to modify in key=value format (use value=null to remove). Can specify multiple.'
     )
@@ -494,12 +571,39 @@ Examples:
     )
 
     parser.add_argument(
+        '--view',
+        action='store_true',
+        help='View metadata from a single file without modification'
+    )
+
+    parser.add_argument(
         '--keep-backups',
         action='store_true',
         help='Keep backup files after processing (default: delete)'
     )
 
     args = parser.parse_args()
+
+    # Handle view mode
+    if args.view:
+        if len(args.paths) != 1:
+            print("Error: --view mode requires exactly one file path", file=sys.stderr)
+            sys.exit(1)
+
+        file_path = Path(args.paths[0])
+        if not file_path.is_file():
+            print(f"Error: --view mode requires a file, not a directory: {file_path}", file=sys.stderr)
+            sys.exit(1)
+
+        # Create modifier for view mode (no attributes needed)
+        modifier = ComicInfoModifier(verbose=args.verbose)
+        success = modifier.view_metadata(file_path)
+        sys.exit(0 if success else 1)
+
+    # Normal modification mode requires attributes
+    if not args.attribute:
+        print("Error: --attribute is required when not using --view mode", file=sys.stderr)
+        sys.exit(1)
 
     # Parse attribute arguments
     attributes = []
